@@ -29,6 +29,7 @@
 
 #include "vast/system/atoms.hpp"
 #include "vast/system/archive.hpp"
+#include "vast/system/simple_store.hpp"
 #include "vast/system/importer.hpp"
 #include "vast/system/index.hpp"
 #include "vast/system/exporter.hpp"
@@ -148,7 +149,7 @@ expected<actor> spawn_index(local_actor* self, options& opts) {
                      taste_parts, num_collectors);
 }
 
-expected<actor> spawn_metastore(local_actor* self, options& opts) {
+expected<actor> spawn_metastore_raft(local_actor* self, options& opts) {
   auto id = raft::server_id{0};
   auto r = opts.params.extract_opts({
     {"id,i", "the server ID of the consensus module", id},
@@ -170,6 +171,26 @@ expected<actor> spawn_metastore(local_actor* self, options& opts) {
     }
   );
   return actor_cast<actor>(s);
+}
+
+expected<actor> spawn_metastore_simple(local_actor* self,
+                                       [[maybe_unused]] options& opts) {
+  auto store = self->spawn(simple_store<std::string, data>,
+                           opts.dir / "simple_store");
+  return actor_cast<actor>(store);
+}
+
+expected<actor> spawn_metastore(local_actor* self, options& opts) {
+  auto impl = "simple"s;
+  auto r = opts.params.extract_opts({
+    {"impl", "the store backend (simple|raft)", impl},
+  });
+  opts.params = r.remainder;
+  if (impl == "simple")
+    return spawn_metastore_raft(self, opts);
+  if (impl == "raft")
+    return spawn_metastore_raft(self, opts);
+  return make_error(ec::unrecognized_option, impl);
 }
 
 #ifdef VAST_HAVE_GPERFTOOLS
