@@ -57,9 +57,11 @@ simple_store(
   typename key_value_store_type<Key, Value>::template stateful_pointer<
     simple_store_state<Key, Value>
   > self, path dir) {
+  using behavior_type =
+    typename key_value_store_type<Key, Value>::behavior_type;
   if (auto err = self->state.init(self, dir)) {
     self->quit(std::move(err));
-    return key_value_store_type<Key, Value>::behavior_type::make_empty_behavior();
+    return behavior_type::make_empty_behavior();
   }
   return {
     [=](put_atom, const Key& key, Value& value) {
